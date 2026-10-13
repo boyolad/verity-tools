@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<style>body{margin:0}img{max-width:100%}</style>
+</head>
+<body>
+<title>Verity Wall Pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: one narrow column, phone first. A big pitch readout sits above the active tool. */
+:root {
+  --bg: #0b0b0b; --panel: #161616; --line: #2b2b2b;
+  --fg: #ffffff; --muted: #9a9a9a;
+  --signal: #ffd23f;   /* measurement line, like setter's tape */
+  --ref: #5cc8ff;      /* reference / plumb line */
+  --ok: #7ee08a; --warn: #ffb04a;
+  --sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #f4f2ee; --panel: #ffffff; --line: #dcd8d0; --fg: #161616; --muted: #5c5c5c;
+  --signal: #b88700; --ref: #0a7cc2; --ok: #1f8a3a; --warn: #b35c00; color-scheme: light } }
+:root[data-theme="light"] {
+  --bg: #f4f2ee; --panel: #ffffff; --line: #dcd8d0; --fg: #161616; --muted: #5c5c5c;
+  --signal: #b88700; --ref: #0a7cc2; --ok: #1f8a3a; --warn: #b35c00; color-scheme: light }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.app { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 14px 40px; display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand { font-size: 12px; letter-spacing: .24em; text-transform: uppercase; font-weight: 500; }
+.brand span { color: var(--muted); font-weight: 400; }
+.eyebrow { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
+.tabs button { background: none; border: 0; color: var(--muted); font: 500 12px var(--sans); letter-spacing: .14em; text-transform: uppercase; padding: 12px 4px; cursor: pointer; }
+.tabs button + button { border-left: 1px solid var(--line); }
+.tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); }
+.readout { display: flex; flex-direction: column; gap: 2px; }
+.big { font: 300 clamp(56px, 18vw, 88px)/1 var(--sans); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.big small { font-size: .32em; letter-spacing: 0; margin-left: 6px; font-weight: 400; }
+.sub { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.gauge { width: 100%; max-width: 100%; height: auto; display: block; }
+.panel { display: flex; flex-direction: column; gap: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 18px; font: 500 12px var(--sans); letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--fg); background: transparent; color: var(--fg); cursor: pointer; min-height: 44px; }
+.btn.solid { background: var(--fg); color: var(--bg); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn:focus-visible, .tabs button:focus-visible, .seg button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--line); }
+.seg button { background: none; border: 0; color: var(--muted); padding: 9px 12px; font: 500 12px var(--sans); cursor: pointer; min-height: 40px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 -2px 0 var(--signal); }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stage { position: relative; background: var(--panel); border: 1px solid var(--line); touch-action: none; user-select: none; -webkit-user-select: none; }
+.stage canvas, .stage video { display: block; width: 100%; height: auto; max-width: 100%; }
+.stage .overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tag { position: absolute; top: 8px; left: 8px; font: 500 10px var(--sans); letter-spacing: .16em; text-transform: uppercase; background: var(--bg); color: var(--muted); padding: 4px 7px; border: 1px solid var(--line); }
+.note { font-size: 14px; color: var(--muted); margin: 0; max-width: 62ch; }
+.note b { color: var(--fg); font-weight: 500; }
+.alert { border: 1px solid var(--warn); color: var(--fg); padding: 12px 14px; font-size: 14px; }
+.alert b { color: var(--warn); font-weight: 600; }
+.steps { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
+.steps b { color: var(--fg); font-weight: 500; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+input[type="text"] { background: var(--panel); color: var(--fg); border: 1px solid var(--line); padding: 10px 12px; font: 15px var(--sans); min-height: 44px; width: 100%; }
+.log { border-top: 1px solid var(--line); display: flex; flex-direction: column; }
+.log-item { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.log-item .v { font: 500 18px var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.log-item .m { color: var(--muted); font-size: 12px; grid-column: 1 / -1; }
+.log-item .l { min-width: 0; overflow-wrap: anywhere; }
+.mono { font-family: var(--mono); }
+.stable { color: var(--ok); } .unstable { color: var(--warn); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header>
+    <div class="brand">Verity <span>Wall Pitch</span></div>
+    <p class="eyebrow">Prototype</p>
+  </header>
+
+  <section class="readout" aria-live="polite">
+    <div class="big" id="bigValue">—</div>
+    <div class="sub" id="subValue">Pick a method below.</div>
+  </section>
+  <svg class="gauge" id="gauge" viewBox="0 0 320 120" role="img" aria-label="Wall profile sketch"></svg>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-photo" aria-selected="true" data-mode="photo">Photo</button>
+    <button role="tab" id="tab-contact" aria-selected="false" data-mode="contact">Contact</button>
+    <button role="tab" id="tab-sight" aria-selected="false" data-mode="sight">Live sight</button>
+  </nav>
+
+  <!-- PHOTO MODE -->
+  <section class="panel" id="panel-photo">
+    <ol class="steps">
+      <li>Stand <b>off to the side</b> so you see the wall's profile edge-on, phone held level.</li>
+      <li>Drag the <b style="color:var(--signal)">yellow</b> line along the wall: <b>B</b> at the base, <b>T</b> at the top.</li>
+      <li>Drag the <b style="color:var(--ref)">blue</b> line onto something truly vertical or level in the photo.</li>
+    </ol>
+    <div class="row">
+      <label class="btn solid" for="photoInput">Take or choose photo</label>
+      <input id="photoInput" type="file" accept="image/*" capture="environment" hidden>
+    </div>
+    <div class="stage" id="photoStage">
+      <canvas id="photoCanvas" aria-label="Photo with measurement lines"></canvas>
+      <span class="tag" id="photoTag">Example photo</span>
+    </div>
+    <div class="row">
+      <div class="field">
+        <span class="eyebrow">Blue line is</span>
+        <div class="seg" id="refSeg">
+          <button aria-pressed="true" data-ref="vertical">Vertical</button>
+          <button aria-pressed="false" data-ref="horizontal">Level</button>
+          <button aria-pressed="false" data-ref="gravity" id="refGravityBtn" disabled>Phone sensor</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="eyebrow">Climber stands</span>
+        <div class="seg" id="sideSeg">
+          <button aria-pressed="true" data-side="left">Left</button>
+          <button aria-pressed="false" data-side="right">Right</button>
+        </div>
+      </div>
+    </div>
+    <p class="note">Good vertical references: a hanging rope or plumb line, a door frame, a gym's support post. Good level ones: a calm horizon, a level floor edge. Avoid tree trunks and rock edges. Photos taken in <b>Live sight</b> carry the phone's own gravity reading, so no reference is needed.</p>
+  </section>
+
+  <!-- CONTACT MODE -->
+  <section class="panel" id="panel-contact" hidden>
+    <ol class="steps">
+      <li>Press the <b>back of the phone</b> flat against the wall, screen facing you. Any rotation is fine.</li>
+      <li>On rock or a wall with holds, lay a <b>board or straightedge</b> across the face and press the phone to that.</li>
+      <li>Hold still until the reading turns green, then save it.</li>
+    </ol>
+    <div class="alert" id="contactBlocked" hidden></div>
+    <div class="row">
+      <button class="btn solid" id="contactStart">Start sensor</button>
+      <span class="sub" id="contactState"></span>
+    </div>
+  </section>
+
+  <!-- LIVE SIGHT MODE -->
+  <section class="panel" id="panel-sight" hidden>
+    <ol class="steps">
+      <li>Stand <b>side-on</b> to the wall and frame its profile. Keep the phone upright, not tipped up or down.</li>
+      <li>The <b style="color:var(--ref)">blue</b> line shows true vertical from the phone's sensor.</li>
+      <li>Tap <b>Capture</b>, then drag the yellow line along the wall in the still photo.</li>
+    </ol>
+    <div class="alert" id="sightBlocked" hidden></div>
+    <div class="row">
+      <button class="btn solid" id="sightStart">Start camera</button>
+      <button class="btn" id="sightCapture" disabled>Capture</button>
+      <span class="sub" id="sightState"></span>
+    </div>
+    <div class="stage" id="sightStage" hidden>
+      <video id="video" playsinline muted></video>
+      <canvas class="overlay" id="sightOverlay"></canvas>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="row">
+      <div class="field" style="flex:1 1 220px">
+        <label class="eyebrow" for="labelInput">Label</label>
+        <input id="labelInput" type="text" placeholder="e.g. Comp wall, panel 3">
+      </div>
+      <button class="btn" id="saveBtn" style="align-self:flex-end">Save reading</button>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <p class="eyebrow">Saved on this phone</p>
+      <button class="btn" id="copyBtn" style="min-height:36px;padding:8px 12px">Copy all</button>
+    </div>
+    <div class="log" id="log"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const DEG = 180 / Math.PI;
+  const state = { mode: 'photo', value: null, method: '', ref: 'vertical', side: 'left' };
+
+  // ---------- shared math ----------
+  // Climbing convention: degrees past vertical. +overhang, -slab, 90 = roof.
+  function describe(p) {
+    if (p == null || !isFinite(p)) return ['—', ''];
+    const a = Math.abs(p);
+    if (a < 0.5) return ['0°', 'Vertical'];
+    if (p > 0) return [a.toFixed(1) + '°', a >= 85 ? 'Roof / overhang' : 'Overhang'];
+    return [a.toFixed(1) + '°', 'Slab'];
+  }
+  // Signed angle from vector u to vector w (y-up coords), CCW positive, degrees.
+  const signedAngle = (u, w) => Math.atan2(u.x * w.y - u.y * w.x, u.x * w.x + u.y * w.y) * DEG;
+
+  // Gravity "up" in the device frame from DeviceOrientation (W3C Z-X'-Y'' angles).
+  function upFromOrientation(beta, gamma) {
+    const b = beta / DEG, g = gamma / DEG;
+    return { x: -Math.cos(b) * Math.sin(g), y: Math.sin(b), z: Math.cos(b) * Math.cos(g) };
+  }
+  // Rotate a device-frame screen vector into the current screen orientation.
+  function toScreen(v) {
+    const ang = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) / DEG;
+    const c = Math.cos(-ang), s = Math.sin(-ang);
+    return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
+  }
+
+  function show(p, method, extra) {
+    state.value = p; state.method = method;
+    const [v, word] = describe(p);
+    $('bigValue').innerHTML = p == null ? '—' : v + '<small>' + word + '</small>';
+    $('subValue').textContent = p == null ? (extra || 'Pick a method below.')
+      : 'Past vertical, by ' + method + (extra ? ' · ' + extra : '');
+    drawGauge(p);
+  }
+
+  function drawGauge(p) {
+    const svg = $('gauge');
+    const css = getComputedStyle(document.documentElement);
+    const fg = css.getPropertyValue('--fg').trim(), mu = css.getPropertyValue('--muted').trim(),
+          sig = css.getPropertyValue('--signal').trim(), ln = css.getPropertyValue('--line').trim();
+    const bx = 150, by = 112, L = 96;
+    const ang = (p == null ? 0 : Math.max(-80, Math.min(95, p))) / DEG;
+    // climber on the left: overhang leans the top to the left
+    const tx = bx - Math.sin(ang) * L, ty = by - Math.cos(ang) * L;
+    let s = `<line x1="20" y1="${by}" x2="300" y2="${by}" stroke="${ln}" stroke-width="2"/>`;
+    s += `<line x1="${bx}" y1="${by}" x2="${bx}" y2="${by - L - 4}" stroke="${mu}" stroke-dasharray="3 4" stroke-width="1"/>`;
+    s += `<polygon points="${bx},${by} ${tx},${ty} ${tx + 70},${ty} ${bx + 70},${by}" fill="${ln}" opacity=".7"/>`;
+    s += `<line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="${p == null ? mu : sig}" stroke-width="4" stroke-linecap="round"/>`;
+    s += `<circle cx="58" cy="${by - 16}" r="5" fill="${fg}"/><line x1="58" y1="${by - 11}" x2="58" y2="${by - 2}" stroke="${fg}" stroke-width="2"/>`;
+    s += `<text x="20" y="16" fill="${mu}" font-family="Inter, sans-serif" font-size="10" letter-spacing="1.5">CLIMBER SIDE</text>`;
+    svg.innerHTML = s;
+  }
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  function setMode(m) {
+    state.mode = m;
+    document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === m));
+    ['photo', 'contact', 'sight'].forEach(k => $('panel-' + k).hidden = k !== m);
+    if (m === 'photo') photo.compute();
+    else if (m === 'contact') show(contact.last, 'contact', contact.running ? '' : 'Press Start sensor.');
+    else show(null, '', 'Start the camera to sight the wall.');
+    try { localStorage.setItem('vp-mode', m); } catch (e) {}
+  }
+
+  // ---------- orientation sensor (shared by Contact and Live sight) ----------
+  const sensor = { up: null, beta: null, gamma: null, listening: false, got: false };
+  async function startSensor() {
+    if (sensor.listening) return sensor.got || waitForEvent();
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const r = await DeviceOrientationEvent.requestPermission();
+        if (r !== 'granted') return false;
+      }
+    } catch (e) { return false; }
+    if (typeof DeviceOrientationEvent === 'undefined') return false;
+    window.addEventListener('deviceorientation', (e) => {
+      if (e.beta == null || e.gamma == null) return;
+      sensor.got = true; sensor.beta = e.beta; sensor.gamma = e.gamma;
+      sensor.up = upFromOrientation(e.beta, e.gamma);
+      contact.onSample(); sight.onSample();
+    });
+    sensor.listening = true;
+    return waitForEvent();
+  }
+  function waitForEvent() {
+    return new Promise(res => {
+      if (sensor.got) return res(true);
+      const t0 = Date.now();
+      const iv = setInterval(() => {
+        if (sensor.got) { clearInterval(iv); res(true); }
+        else if (Date.now() - t0 > 2000) { clearInterval(iv); res(false); }
+      }, 100);
+    });
+  }
+  const BLOCKED = window.self !== window.top
+    ? '<b>This view can\'t read the phone\'s motion sensor or camera.</b> Inside the Claude app the page is sandboxed. Photo mode works here; Contact and Live sight need the standalone copy at boyolad.github.io/verity-tools, opened in Safari or Chrome.'
+    : '<b>No motion sensor or camera reading.</b> Allow motion and camera access when your browser asks. If you said no, reload the page and try again. Photo mode works without either.';
+
+  // ---------- CONTACT ----------
+  const contact = {
+    running: false, buf: [], last: null,
+    async start() {
+      $('contactState').textContent = 'Starting…';
+      const ok = await startSensor();
+      if (!ok) { $('contactBlocked').innerHTML = BLOCKED; $('contactBlocked').hidden = false; $('contactState').textContent = ''; return; }
+      this.running = true; $('contactStart').disabled = true; $('contactState').textContent = '';
+    },
+    onSample() {
+      if (!this.running || state.mode !== 'contact') return;
+      const u = sensor.up;
+      // Screen normal elevation: + means the screen faces up (slab). Pitch past vertical = -elevation.
+      const p = -Math.asin(Math.max(-1, Math.min(1, u.z))) * DEG;
+      this.buf.push(p); if (this.buf.length > 30) this.buf.shift();
+      const mean = this.buf.reduce((a, b) => a + b, 0) / this.buf.length;
+      const sd = Math.sqrt(this.buf.reduce((a, b) => a + (b - mean) ** 2, 0) / this.buf.length);
+      this.last = mean;
+      const steady = this.buf.length >= 15 && sd < 0.15;
+      show(mean, 'contact', steady ? 'steady' : 'hold still');
+      $('subValue').className = 'sub ' + (steady ? 'stable' : 'unstable');
+    }
+  };
+  $('contactStart').addEventListener('click', () => contact.start());
+
+  // ---------- canvas helpers ----------
+  function drawHandle(ctx, x, y, color, label, active) {
+    ctx.beginPath(); ctx.arc(x, y, active ? 15 : 12, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+    if (label) { ctx.font = '600 12px Inter, sans-serif'; ctx.fillStyle = color; ctx.fillText(label, x + 17, y - 12); }
+  }
+  const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // ---------- PHOTO ----------
+  const photo = {
+    img: null, w: 0, h: 0, scale: 1,
+    pts: null, gravityUp: null, drag: null,
+    canvas: $('photoCanvas'),
+    load(img, opts = {}) {
+      this.img = img; this.w = img.width; this.h = img.height;
+      const W = this.w, H = this.h;
+      this.pts = opts.pts || {
+        b: { x: W * 0.42, y: H * 0.8 }, t: { x: W * 0.42, y: H * 0.25 },
+        r1: { x: W * 0.8, y: H * 0.8 }, r2: { x: W * 0.8, y: H * 0.25 }
+      };
+      this.gravityUp = opts.gravityUp || null;
+      $('refGravityBtn').disabled = !this.gravityUp;
+      setRef(this.gravityUp ? 'gravity' : (state.ref === 'gravity' ? 'vertical' : state.ref));
+      $('photoTag').hidden = !opts.example;
+      this.layout();
+    },
+    layout() {
+      if (!this.img) return;
+      const cssW = this.canvas.parentElement.clientWidth;
+      const maxH = Math.max(320, window.innerHeight * 0.68);
+      this.scale = Math.min(cssW / this.w, maxH / this.h);
+      const cw = this.w * this.scale, ch = this.h * this.scale;
+      const dpr = window.devicePixelRatio || 1;
+      this.canvas.style.width = cw + 'px'; this.canvas.style.height = ch + 'px';
+      this.canvas.style.margin = '0 auto';
+      this.canvas.width = Math.round(cw * dpr); this.canvas.height = Math.round(ch * dpr);
+      this.draw();
+    },
+    draw() {
+      const c = this.canvas, ctx = c.getContext('2d'), dpr = window.devicePixelRatio || 1, s = this.scale;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.drawImage(this.img, 0, 0, this.w * s, this.h * s);
+      const P = (p) => [p.x * s, p.y * s];
+      const sig = tok('--signal'), ref = tok('--ref');
+      if (state.ref !== 'gravity') {
+        const [a, b] = [P(this.pts.r1), P(this.pts.r2)];
+        ctx.setLineDash([8, 6]); ctx.lineWidth = 2.5; ctx.strokeStyle = ref;
+        ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); ctx.setLineDash([]);
+        drawHandle(ctx, ...a, ref, '', this.drag === 'r1'); drawHandle(ctx, ...b, ref, '', this.drag === 'r2');
+      } else {
+        const [bx, by] = P(this.pts.b), g = this.gravityUp, L = 2000;
+        ctx.setLineDash([8, 6]); ctx.lineWidth = 2; ctx.strokeStyle = ref;
+        ctx.beginPath(); ctx.moveTo(bx - g.x * L, by + g.y * L); ctx.lineTo(bx + g.x * L, by - g.y * L); ctx.stroke(); ctx.setLineDash([]);
+      }
+      const [b, t] = [P(this.pts.b), P(this.pts.t)];
+      ctx.lineWidth = 3.5; ctx.strokeStyle = sig;
+      ctx.beginPath(); ctx.moveTo(...b); ctx.lineTo(...t); ctx.stroke();
+      drawHandle(ctx, ...b, sig, 'B', this.drag === 'b'); drawHandle(ctx, ...t, sig, 'T', this.drag === 't');
+      if (this.drag) this.loupe(ctx);
+    },
+    loupe(ctx) {
+      // magnified view of the dragged point, in the corner away from the finger
+      const p = this.pts[this.drag], s = this.scale, R = 56, Z = 3;
+      const cw = this.w * s;
+      const cx = p.x * s < cw / 2 ? cw - R - 10 : R + 10, cy = R + 10;
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+      const srcR = R / (s * Z);
+      ctx.drawImage(this.img, p.x - srcR, p.y - srcR, srcR * 2, srcR * 2, cx - R, cy - R, R * 2, R * 2);
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.lineWidth = 2; ctx.strokeStyle = tok('--fg'); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy); ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+      ctx.strokeStyle = this.drag[0] === 'r' ? tok('--ref') : tok('--signal'); ctx.stroke();
+    },
+    compute() {
+      if (!this.pts || state.mode !== 'photo') return;
+      const { b, t, r1, r2 } = this.pts;
+      const w = { x: t.x - b.x, y: -(t.y - b.y) };   // y-up
+      let up;
+      if (state.ref === 'gravity') up = this.gravityUp;
+      else {
+        const r = { x: r2.x - r1.x, y: -(r2.y - r1.y) };
+        up = state.ref === 'vertical' ? r : { x: -r.y, y: r.x };
+        if (up.y < 0) up = { x: -up.x, y: -up.y };
+      }
+      if (!up || (Math.hypot(w.x, w.y) < 5)) return show(null, '', 'Drag the lines into place.');
+      const lean = signedAngle(up, w); // + = top leans left
+      const p = state.side === 'left' ? lean : -lean;
+      const refName = { vertical: 'vertical reference', horizontal: 'level reference', gravity: 'phone sensor' }[state.ref];
+      show(p, 'photo', refName);
+    },
+    pointer(e) {
+      const r = this.canvas.getBoundingClientRect();
+      return { x: (e.clientX - r.left) / this.scale, y: (e.clientY - r.top) / this.scale };
+    }
+  };
+  const pc = photo.canvas;
+  pc.addEventListener('pointerdown', (e) => {
+    const p = photo.pointer(e), hit = 30 / photo.scale;
+    let best = null, bd = Infinity;
+    const keys = state.ref === 'gravity' ? ['b', 't'] : ['b', 't', 'r1', 'r2'];
+    for (const k of keys) { const d = Math.hypot(photo.pts[k].x - p.x, photo.pts[k].y - p.y); if (d < bd) { bd = d; best = k; } }
+    if (bd > hit) return;
+    photo.drag = best; photo.off = { x: photo.pts[best].x - p.x, y: photo.pts[best].y - p.y };
+    pc.setPointerCapture(e.pointerId); e.preventDefault(); photo.draw();
+  });
+  pc.addEventListener('pointermove', (e) => {
+    if (!photo.drag) return;
+    const p = photo.pointer(e);
+    photo.pts[photo.drag] = { x: Math.max(0, Math.min(photo.w, p.x + photo.off.x)), y: Math.max(0, Math.min(photo.h, p.y + photo.off.y)) };
+    photo.draw(); photo.compute();
+  });
+  const endDrag = () => { if (photo.drag) { photo.drag = null; photo.draw(); } };
+  pc.addEventListener('pointerup', endDrag); pc.addEventListener('pointercancel', endDrag);
+
+  $('photoInput').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const url = URL.createObjectURL(f), img = new Image();
+    img.onload = () => { photo.load(img); photo.compute(); };
+    img.src = url;
+  });
+
+  function setRef(r) {
+    state.ref = r;
+    document.querySelectorAll('#refSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.ref === r));
+    if (photo.img) { photo.draw(); photo.compute(); }
+  }
+  document.querySelectorAll('#refSeg button').forEach(b => b.addEventListener('click', () => setRef(b.dataset.ref)));
+  document.querySelectorAll('#sideSeg button').forEach(b => b.addEventListener('click', () => {
+    state.side = b.dataset.side;
+    document.querySelectorAll('#sideSeg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    photo.compute();
+  }));
+  window.addEventListener('resize', () => photo.layout());
+
+  // Example: a side view of a 30° overhang with a hanging rope as the plumb line.
+  function examplePhoto() {
+    const W = 900, H = 1200, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#3a3f45'); sky.addColorStop(1, '#23262a');
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#2d2a27'; g.fillRect(0, 1040, W, 160);           // floor / mats
+    g.fillStyle = '#3b3733'; g.fillRect(0, 1040, W, 14);
+    const a = 30 / DEG, bx = 470, by = 1040, L = 820;
+    const tx = bx - Math.sin(a) * L, ty = by - Math.cos(a) * L;
+    g.fillStyle = '#8e8a83';                                           // wall slab, face on the left
+    g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.lineTo(tx + 60, ty - 40); g.lineTo(W, ty - 40); g.lineTo(W, by); g.closePath(); g.fill();
+    g.fillStyle = '#a7a39b'; g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.lineTo(tx + 26, ty); g.lineTo(bx + 26, by); g.closePath(); g.fill();
+    const holds = ['#e8c13a', '#3aa0e8', '#e85a3a', '#5ac46a', '#e8c13a'];
+    for (let i = 0; i < 5; i++) {                                      // holds on the face
+      const f = 0.12 + i * 0.18, hx = bx + (tx - bx) * f, hy = by + (ty - by) * f;
+      g.fillStyle = holds[i]; g.beginPath(); g.ellipse(hx - 14, hy, 22, 14, -a, 0, Math.PI * 2); g.fill();
+    }
+    g.strokeStyle = '#d9d4c7'; g.lineWidth = 6;                       // hanging rope
+    g.beginPath(); g.moveTo(170, 60); g.lineTo(170, 1000); g.stroke();
+    g.fillStyle = '#d9d4c7'; g.beginPath(); g.arc(170, 1006, 14, 0, Math.PI * 2); g.fill();
+    const img = new Image();
+    img.onload = () => { photo.load(img, { example: true, pts: {
+      b: { x: bx, y: by }, t: { x: bx + (tx - bx) * 0.92, y: by + (ty - by) * 0.92 },
+      r1: { x: 170, y: 940 }, r2: { x: 170, y: 120 } } }); photo.compute(); };
+    img.src = c.toDataURL('image/jpeg', 0.85);
+  }
+
+  // ---------- LIVE SIGHT ----------
+  const sight = {
+    stream: null, video: $('video'), ov: $('sightOverlay'),
+    async start() {
+      $('sightState').textContent = 'Starting…';
+      const okSensor = await startSensor();
+      let okCam = false;
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 } }, audio: false });
+        this.video.srcObject = this.stream; await this.video.play(); okCam = true;
+      } catch (e) { okCam = false; }
+      $('sightState').textContent = '';
+      if (!okSensor || !okCam) {
+        $('sightBlocked').innerHTML = BLOCKED + (okCam && !okSensor ? ' (Camera started, but no motion sensor reading.)' : '');
+        $('sightBlocked').hidden = false;
+        if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+        return;
+      }
+      $('sightStage').hidden = false; $('sightStart').disabled = true; $('sightCapture').disabled = false;
+    },
+    onSample() {
+      if (!this.stream || state.mode !== 'sight') return;
+      const v = this.video, r = v.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+      this.ov.width = r.width * dpr; this.ov.height = r.height * dpr;
+      const ctx = this.ov.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, r.width, r.height);
+      const u = toScreen(sensor.up), n = Math.hypot(u.x, u.y) || 1;
+      const cx = r.width / 2, cy = r.height / 2, L = r.height;
+      ctx.strokeStyle = tok('--ref'); ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
+      ctx.beginPath(); ctx.moveTo(cx - u.x / n * L, cy + u.y / n * L); ctx.lineTo(cx + u.x / n * L, cy - u.y / n * L); ctx.stroke();
+      // camera looks out the back (-z): its elevation tells whether the phone is tipped
+      const tip = Math.asin(Math.max(-1, Math.min(1, -sensor.up.z))) * DEG;
+      const okTip = Math.abs(tip) < 10;
+      $('sightState').textContent = 'Tip ' + (tip > 0 ? 'up ' : 'down ') + Math.abs(tip).toFixed(0) + '°' + (okTip ? '' : ', level the phone');
+      $('sightState').className = 'sub ' + (okTip ? 'stable' : 'unstable');
+    },
+    capture() {
+      const v = this.video, c = document.createElement('canvas');
+      c.width = v.videoWidth; c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      const u = toScreen(sensor.up), n = Math.hypot(u.x, u.y) || 1;
+      const img = new Image();
+      img.onload = () => {
+        setMode('photo');
+        photo.load(img, { gravityUp: { x: u.x / n, y: u.y / n } });
+        photo.compute();
+      };
+      img.src = c.toDataURL('image/jpeg', 0.9);
+    }
+  };
+  $('sightStart').addEventListener('click', () => sight.start());
+  $('sightCapture').addEventListener('click', () => sight.capture());
+
+  // ---------- saved readings (this phone only) ----------
+  function loadLog() { try { return JSON.parse(localStorage.getItem('vp-log') || '[]'); } catch (e) { return []; } }
+  function saveLog(l) { try { localStorage.setItem('vp-log', JSON.stringify(l)); } catch (e) {} }
+  let log = loadLog();
+  const example = log.length === 0;
+  function renderLog() {
+    const items = log.length ? log : [
+      { label: 'Example: 30° board', value: 30.2, method: 'contact', t: Date.now() },
+      { label: 'Example: slab boulder', value: -12.4, method: 'photo', t: Date.now() }];
+    $('log').innerHTML = '';
+    items.forEach((it, i) => {
+      const d = document.createElement('div'); d.className = 'log-item';
+      const [v, w] = describe(it.value);
+      const l = document.createElement('div'); l.className = 'l'; l.textContent = it.label || 'Untitled';
+      const val = document.createElement('div'); val.className = 'v'; val.textContent = (it.value > 0.5 ? '+' : '') + v;
+      const m = document.createElement('div'); m.className = 'm';
+      m.textContent = w + ' · ' + it.method + ' · ' + new Date(it.t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) + (log.length ? '' : ' · sample row');
+      d.append(l, val, m); $('log').append(d);
+    });
+  }
+  $('saveBtn').addEventListener('click', () => {
+    if (state.value == null) return;
+    log.unshift({ label: $('labelInput').value.trim(), value: +state.value.toFixed(1), method: state.method, t: Date.now() });
+    saveLog(log); renderLog(); $('labelInput').value = '';
+    $('saveBtn').textContent = 'Saved'; setTimeout(() => $('saveBtn').textContent = 'Save reading', 1200);
+  });
+  $('copyBtn').addEventListener('click', async () => {
+    const txt = log.map(it => `${it.label || 'Untitled'}\t${it.value}°\t${describe(it.value)[1]}\t${it.method}\t${new Date(it.t).toISOString()}`).join('\n') || 'No saved readings yet.';
+    try { await navigator.clipboard.writeText(txt); $('copyBtn').textContent = 'Copied'; }
+    catch (e) { $('copyBtn').textContent = 'Copy failed'; }
+    setTimeout(() => $('copyBtn').textContent = 'Copy all', 1400);
+  });
+
+  // ---------- boot ----------
+  renderLog();
+  drawGauge(null);
+  examplePhoto();
+  let m = 'photo'; try { m = localStorage.getItem('vp-mode') || 'photo'; } catch (e) {}
+  setMode(m);
+  window.__vp = { describe, signedAngle, upFromOrientation };
+})();
+</script>
+
+</body>
+</html>
