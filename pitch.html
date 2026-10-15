@@ -158,6 +158,8 @@ details.tips li b { color: var(--fg); font-weight: 500; }
 .tab[aria-selected="true"] { color: var(--fg); }
 .tab[aria-selected="true"]::before { content: ""; position: absolute; top: 0; left: 30%; right: 30%; height: 2px; border-radius: 0 0 2px 2px; background: var(--signal); }
 
+@keyframes flash { 0% { box-shadow: 0 0 0 3px var(--ok); border-color: var(--ok); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.result.flash { animation: flash 1.2s ease-out; }
 .toast { position: fixed; left: 50%; bottom: calc(var(--tabbar) + 16px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 8px); opacity: 0; pointer-events: none; z-index: 7; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 500; padding: 10px 16px; border-radius: 999px; transition: opacity .2s, transform .2s; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -245,13 +247,20 @@ details.tips li b { color: var(--fg); font-weight: 500; }
   <!-- CONTACT -->
   <section class="panel" id="panel-contact" hidden>
     <div class="panel-head"><h2>Measure by contact</h2></div>
+    <div class="field">
+      <span class="eyebrow">Against the wall</span>
+      <div class="seg" id="faceSeg">
+        <button type="button" aria-pressed="true" data-face="screen">Screen</button>
+        <button type="button" aria-pressed="false" data-face="back">Back</button>
+      </div>
+    </div>
     <div class="card empty-state" id="contactEmpty">
       <svg class="art" viewBox="0 0 120 90" aria-hidden="true">
         <path d="M40 84 L64 8" stroke="var(--muted)" stroke-width="3" stroke-linecap="round"/>
         <rect x="47" y="26" width="16" height="34" rx="3" transform="rotate(17.5 55 43)" fill="var(--surface-2)" stroke="var(--fg)" stroke-width="2"/>
         <path d="M20 84 H100" stroke="var(--line)" stroke-width="2"/>
       </svg>
-      <p>Press the back of the phone flat against the wall, screen facing you. Any rotation works.</p>
+      <p id="faceHint">Press the screen flat against the wall. It locks the reading and beeps once it's steady, then you can pull the phone away to read it.</p>
       <p class="ios-note" hidden>Safari will ask to use motion and orientation. Tap Allow.</p>
       <div class="notice" id="contactBlocked" hidden><svg class="i"><use href="#i-alert"/></svg><span></span></div>
       <button class="btn primary" id="contactStart">Start sensor</button>
@@ -264,7 +273,9 @@ details.tips li b { color: var(--fg); font-weight: 500; }
       <summary><svg class="i"><use href="#i-chev"/></svg>Tips for contact readings</summary>
       <ul>
         <li><b>Holds in the way?</b> Lay a board or straightedge across the face and press the phone to that.</li>
-        <li><b>Lock</b> freezes the reading so you can step back and read it.</li>
+        <li><b>Camera bump?</b> Use Screen. The front is flat, so the bump can't tilt the phone. Back works for phones or cases that sit flat.</li>
+        <li><b>Auto-lock</b> freezes the reading once it has been steady for a second. Tap Unlock to measure again.</li>
+        <li><b>Turn the ringer on</b> to hear the beep. The result card also flashes green.</li>
         <li><b>Check it first:</b> on a door or wall you know is vertical it should read close to 0°.</li>
       </ul>
     </details>
@@ -442,10 +453,12 @@ details.tips li b { color: var(--fg); font-weight: 500; }
 
   // ---------- CONTACT ----------
   const contact = {
-    running: false, buf: [], mean: null, steady: 0,
+    running: false, buf: [], mean: null, steady: 0, armed: true, okSince: 0, audio: null,
+    face: 'screen',
     async start() {
       $('contactStart').disabled = true; $('contactStart').textContent = 'Starting…';
       const ok = await startSensor();
+      this.unlockAudio();
       $('contactStart').disabled = false; $('contactStart').textContent = 'Start sensor';
       if (!ok) return blocked('contactBlocked');
       this.running = true;
@@ -454,30 +467,75 @@ details.tips li b { color: var(--fg); font-weight: 500; }
     },
     onSample() {
       if (!this.running || state.locked) return;
-      const p = -Math.asin(Math.max(-1, Math.min(1, sensor.up.z))) * DEG;
+      // screen normal elevation (+ = screen faces up). Back on wall: pitch = -elev. Screen on wall: the normal is flipped.
+      const elev = Math.asin(Math.max(-1, Math.min(1, sensor.up.z))) * DEG;
+      const p = this.face === 'back' ? -elev : elev;
       this.buf.push(p); if (this.buf.length > 30) this.buf.shift();
       this.mean = this.buf.reduce((a, b) => a + b, 0) / this.buf.length;
       const sd = Math.sqrt(this.buf.reduce((a, b) => a + (b - this.mean) ** 2, 0) / this.buf.length);
       // 0..1: how settled the reading is (full when 15+ samples within ±0.15°)
       this.steady = Math.min(1, this.buf.length / 15) * Math.max(0, Math.min(1, (1.0 - sd) / 0.85));
+      // auto-lock after 1 s of steady reading; re-arms only once the phone has moved again
+      const now = Date.now();
+      if (this.steady < 0.6) this.armed = true;
+      if (this.steady >= 0.98) { if (!this.okSince) this.okSince = now; } else this.okSince = 0;
+      if (this.armed && this.okSince && now - this.okSince > 1000 && state.mode === 'contact') return this.setLock(true, true);
       if (state.mode === 'contact') this.render();
     },
     render() {
       const ok = this.steady >= 0.98;
       const q = state.locked ? { cls: 'ok', text: 'Locked' } : ok ? { cls: 'ok', text: 'Steady' } : { cls: 'warn', text: 'Hold still' };
-      show(this.mean, 'contact', state.locked ? 'Reading locked. Tap Unlock to measure again.' : 'Keep the phone flat on the wall.', q);
+      show(this.mean, 'contact', state.locked ? 'Reading locked. Tap Unlock to measure again.' : (this.face === 'screen' ? 'Keep the screen flat on the wall. It beeps when locked.' : 'Keep the phone flat on the wall.'), q);
       $('meter').querySelector('i').style.width = (state.locked ? 100 : this.steady * 100) + '%';
       $('meter').classList.toggle('ok', ok || state.locked);
-      $('steadyText').textContent = state.locked ? 'Locked' : ok ? 'Steady. Lock or save it.' : 'Hold still…';
+      $('steadyText').textContent = state.locked ? 'Locked' : ok ? 'Steady, locking…' : 'Hold still…';
     }
   };
   $('contactStart').addEventListener('click', () => contact.start());
-  $('lockBtn').addEventListener('click', () => {
-    state.locked = !state.locked;
-    $('lockBtn').querySelector('span').textContent = state.locked ? 'Unlock' : 'Lock';
-    if (!state.locked) contact.buf = [];
-    contact.render();
-  });
+  contact.setLock = function (on, auto) {
+    state.locked = on;
+    $('lockBtn').querySelector('span').textContent = on ? 'Unlock' : 'Lock';
+    if (on) { this.armed = false; if (auto) this.signal(); }
+    else { this.buf = []; this.okSince = 0; }
+    this.render();
+  };
+  contact.unlockAudio = function () {
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = 'playback';
+      this.audio = this.audio || new (window.AudioContext || window.webkitAudioContext)();
+      this.audio.resume();
+    } catch (e) {}
+  };
+  contact.signal = function () {
+    try {
+      const a = this.audio; if (a) {
+        [0, 0.16].forEach(t0 => {
+          const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+          o.frequency.value = 1320; o.connect(g); g.connect(a.destination);
+          g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+          o.start(t); o.stop(t + 0.13);
+        });
+      }
+    } catch (e) {}
+    try { navigator.vibrate && navigator.vibrate(120); } catch (e) {}
+    const card = document.querySelector('.result');
+    card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+  };
+  $('lockBtn').addEventListener('click', () => { contact.unlockAudio(); contact.setLock(!state.locked, false); });
+  const FACE_HINT = {
+    screen: 'Press the screen flat against the wall. It locks the reading and beeps once it\'s steady, then you can pull the phone away to read it.',
+    back: 'Press the back of the phone flat against the wall, screen facing you. Any rotation works.'
+  };
+  function setFace(f) {
+    contact.face = f;
+    document.querySelectorAll('#faceSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.face === f));
+    $('faceHint').textContent = FACE_HINT[f];
+    contact.buf = []; contact.okSince = 0;
+    if (state.locked) contact.setLock(false);
+    try { localStorage.setItem('vp-face', f); } catch (e) {}
+  }
+  document.querySelectorAll('#faceSeg button').forEach(b => b.addEventListener('click', () => setFace(b.dataset.face)));
+  try { setFace(localStorage.getItem('vp-face') || 'screen'); } catch (e) { setFace('screen'); }
 
   // ---------- canvas helpers ----------
   function drawHandle(ctx, x, y, color, label, active) {
