@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0b0b">
 <style>body{margin:0}img{max-width:100%}</style>
 </head>
 <body>
@@ -12,194 +13,314 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* Layout: one narrow column, phone first. A big pitch readout sits above the active tool. */
+/* Layout: phone app. Result card on top, active tool below, readings list, fixed tab bar at the bottom. */
 :root {
-  --bg: #0b0b0b; --panel: #161616; --line: #2b2b2b;
-  --fg: #ffffff; --muted: #9a9a9a;
-  --signal: #ffd23f;   /* measurement line, like setter's tape */
-  --ref: #5cc8ff;      /* reference / plumb line */
-  --ok: #7ee08a; --warn: #ffb04a;
+  --bg: #0b0b0b; --surface: #151515; --surface-2: #1d1d1d; --line: #2a2a2a;
+  --fg: #f5f5f3; --muted: #9b9b97; --faint: #6c6c68;
+  --signal: #ffd23f; --signal-ink: #141414;   /* the measured wall line */
+  --ref: #5cc8ff;                              /* plumb / level reference */
+  --ok: #7ee08a; --warn: #ffb04a; --over: #ff8a5c; --slab: #6fb7ff;
   --sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --radius: 14px; --tabbar: 64px;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
-  --bg: #f4f2ee; --panel: #ffffff; --line: #dcd8d0; --fg: #161616; --muted: #5c5c5c;
-  --signal: #b88700; --ref: #0a7cc2; --ok: #1f8a3a; --warn: #b35c00; color-scheme: light } }
+  --bg: #f2f1ed; --surface: #ffffff; --surface-2: #f6f5f1; --line: #e1ded6;
+  --fg: #151515; --muted: #5f5e5a; --faint: #8d8b85;
+  --signal: #c99700; --signal-ink: #ffffff; --ref: #0a7cc2;
+  --ok: #1f8a3a; --warn: #b35c00; --over: #c94c1c; --slab: #1f6fc2; color-scheme: light } }
 :root[data-theme="light"] {
-  --bg: #f4f2ee; --panel: #ffffff; --line: #dcd8d0; --fg: #161616; --muted: #5c5c5c;
-  --signal: #b88700; --ref: #0a7cc2; --ok: #1f8a3a; --warn: #b35c00; color-scheme: light }
+  --bg: #f2f1ed; --surface: #ffffff; --surface-2: #f6f5f1; --line: #e1ded6;
+  --fg: #151515; --muted: #5f5e5a; --faint: #8d8b85;
+  --signal: #c99700; --signal-ink: #ffffff; --ref: #0a7cc2;
+  --ok: #1f8a3a; --warn: #b35c00; --over: #c94c1c; --slab: #1f6fc2; color-scheme: light }
+
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { background: var(--bg); color: var(--fg); }
-body { font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-.app { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 14px 40px; display: flex; flex-direction: column; gap: 18px; }
-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.brand { font-size: 12px; letter-spacing: .24em; text-transform: uppercase; font-weight: 500; }
-.brand span { color: var(--muted); font-weight: 400; }
-.eyebrow { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0; }
-.tabs { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
-.tabs button { background: none; border: 0; color: var(--muted); font: 500 12px var(--sans); letter-spacing: .14em; text-transform: uppercase; padding: 12px 4px; cursor: pointer; }
-.tabs button + button { border-left: 1px solid var(--line); }
-.tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); }
-.readout { display: flex; flex-direction: column; gap: 2px; }
-.big { font: 300 clamp(56px, 18vw, 88px)/1 var(--sans); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-.big small { font-size: .32em; letter-spacing: 0; margin-left: 6px; font-weight: 400; }
-.sub { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
-.gauge { width: 100%; max-width: 100%; height: auto; display: block; }
-.panel { display: flex; flex-direction: column; gap: 14px; }
-.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 18px; font: 500 12px var(--sans); letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--fg); background: transparent; color: var(--fg); cursor: pointer; min-height: 44px; }
-.btn.solid { background: var(--fg); color: var(--bg); }
+body { font-family: var(--sans); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; }
+svg.i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* top bar */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 560px; margin: 0 auto; padding-inline: 16px; height: 52px; display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand b { font-weight: 600; font-size: 13px; letter-spacing: .26em; }
+.brand span { font-size: 15px; color: var(--muted); font-weight: 400; }
+.badge { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; }
+
+.app { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 16px calc(var(--tabbar) + 32px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.eyebrow { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 500; }
+
+/* result */
+.result { padding: 18px 18px 16px; display: grid; grid-template-columns: 1fr 116px; gap: 4px 12px; align-items: center; }
+.result .val { font: 300 clamp(54px, 17vw, 76px)/1 var(--sans); letter-spacing: -.035em; font-variant-numeric: tabular-nums; margin-top: 6px; }
+.result .val.empty { color: var(--faint); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.chip.over { color: var(--over); } .chip.slab { color: var(--slab); } .chip.vert { color: var(--ok); }
+.chip.ok { color: var(--ok); } .chip.warn { color: var(--warn); }
+.profile { width: 116px; height: 116px; grid-row: span 3; justify-self: end; }
+.meta { grid-column: 1 / -1; font-size: 13px; color: var(--muted); min-height: 20px; }
+.result-actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.save-form { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.btn.ghost { background: transparent; }
+.btn.small { min-height: 34px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+.btn.grow { flex: 1; }
 .btn:disabled { opacity: .4; cursor: default; }
-.btn:focus-visible, .tabs button:focus-visible, .seg button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
-.seg { display: inline-flex; border: 1px solid var(--line); }
-.seg button { background: none; border: 0; color: var(--muted); padding: 9px 12px; font: 500 12px var(--sans); cursor: pointer; min-height: 40px; }
-.seg button + button { border-left: 1px solid var(--line); }
-.seg button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 -2px 0 var(--signal); }
-.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.stage { position: relative; background: var(--panel); border: 1px solid var(--line); touch-action: none; user-select: none; -webkit-user-select: none; }
+.btn:focus-visible, .seg button:focus-visible, .tab:focus-visible, .shutter:focus-visible, summary:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.icon-btn { width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 8px; border: 0; background: transparent; color: var(--faint); cursor: pointer; }
+input[type="text"] { flex: 1; min-width: 0; background: var(--surface-2); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; font: 15px var(--sans); min-height: 44px; }
+input[type="text"]:focus { outline: 2px solid var(--signal); outline-offset: 0; border-color: transparent; }
+
+/* tool panels */
+.panel { display: flex; flex-direction: column; gap: 12px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.panel-head h2 { font-size: 17px; font-weight: 500; margin: 0; letter-spacing: -.01em; }
+.hint { font-size: 14px; color: var(--muted); margin: 0; }
+.hint b { color: var(--fg); font-weight: 500; }
+.sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin: 0 2px 2px; }
+.stage { position: relative; overflow: hidden; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); touch-action: none; user-select: none; -webkit-user-select: none; }
 .stage canvas, .stage video { display: block; width: 100%; height: auto; max-width: 100%; }
-.stage .overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
-.tag { position: absolute; top: 8px; left: 8px; font: 500 10px var(--sans); letter-spacing: .16em; text-transform: uppercase; background: var(--bg); color: var(--muted); padding: 4px 7px; border: 1px solid var(--line); }
-.note { font-size: 14px; color: var(--muted); margin: 0; max-width: 62ch; }
-.note b { color: var(--fg); font-weight: 500; }
-.alert { border: 1px solid var(--warn); color: var(--fg); padding: 12px 14px; font-size: 14px; }
-.alert b { color: var(--warn); font-weight: 600; }
-.steps { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
-.steps b { color: var(--fg); font-weight: 500; }
-.key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
-input[type="text"] { background: var(--panel); color: var(--fg); border: 1px solid var(--line); padding: 10px 12px; font: 15px var(--sans); min-height: 44px; width: 100%; }
-.log { border-top: 1px solid var(--line); display: flex; flex-direction: column; }
-.log-item { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.log-item .v { font: 500 18px var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
-.log-item .m { color: var(--muted); font-size: 12px; grid-column: 1 / -1; }
-.log-item .l { min-width: 0; overflow-wrap: anywhere; }
-.mono { font-family: var(--mono); }
-.stable { color: var(--ok); } .unstable { color: var(--warn); }
+.stage .overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.stage-tag { position: absolute; bottom: 10px; left: 10px; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; background: rgba(0,0,0,.6); color: #fff; padding: 4px 9px; border-radius: 999px; }
+.stage-btn { position: absolute; right: 10px; bottom: 10px; }
+.stage-btn .btn { background: rgba(0,0,0,.66); color: #fff; border-color: rgba(255,255,255,.25); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 400px) { .controls { grid-template-columns: 1fr; } }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.seg { display: flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { flex: 1; border: 0; background: transparent; color: var(--muted); padding: 0 8px; min-height: 36px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.25), inset 0 0 0 1px var(--line); }
+.seg button:disabled { opacity: .35; cursor: default; }
+details.tips { border-top: 1px solid var(--line); padding-top: 4px; }
+details.tips summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); min-height: 40px; }
+details.tips summary::-webkit-details-marker { display: none; }
+details.tips summary svg { transition: transform .2s; }
+details.tips[open] summary svg { transform: rotate(90deg); }
+details.tips ul { margin: 0 0 6px; padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 6px; }
+details.tips li b { color: var(--fg); font-weight: 500; }
+
+/* empty states */
+.empty-state { padding: 28px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+.empty-state .art { width: 120px; height: 90px; }
+.empty-state p { margin: 0; color: var(--muted); font-size: 14px; max-width: 34ch; }
+.notice { display: flex; gap: 10px; align-items: flex-start; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line)); background: color-mix(in srgb, var(--warn) 8%, var(--surface)); padding: 12px 14px; font-size: 14px; color: var(--fg); text-align: left; }
+.notice svg { color: var(--warn); margin-top: 1px; }
+
+/* contact */
+.steady { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.meter { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--warn); transition: width .15s, background .2s; }
+.meter.ok i { background: var(--ok); }
+.steady-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--muted); }
+
+/* sight */
+.shutter { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: 66px; height: 66px; border-radius: 50%; border: 4px solid #fff; background: rgba(255,255,255,.25); cursor: pointer; pointer-events: auto; }
+.shutter::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: #fff; }
+.shutter:active::after { inset: 8px; }
+.tilt-chip { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font: 500 12px var(--sans); padding: 5px 11px; border-radius: 999px; background: rgba(0,0,0,.66); color: #fff; white-space: nowrap; }
+.tilt-chip.ok { color: #9ff0a8; } .tilt-chip.warn { color: #ffc27a; }
+
+/* readings */
+.readings-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.readings-head h2 { font-size: 17px; font-weight: 500; margin: 0; }
+.list { overflow: hidden; }
+.item { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 2px 10px; padding: 12px 8px 12px 16px; border-bottom: 1px solid var(--line); }
+.item:last-child { border-bottom: 0; }
+.item .l { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.item .m { color: var(--muted); font-size: 12px; grid-column: 1; }
+.item .v { font: 500 18px var(--mono); font-variant-numeric: tabular-nums; text-align: right; grid-row: 1 / span 2; grid-column: 2; }
+.item .v.over { color: var(--over); } .item .v.slab { color: var(--slab); }
+.item .icon-btn { grid-row: 1 / span 2; grid-column: 3; }
+.item.sample { opacity: .6; }
+.list-empty { padding: 14px 16px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); }
+
+/* tab bar */
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabbar-in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); height: var(--tabbar); }
+.tab { border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--faint); font-size: 11px; font-weight: 500; cursor: pointer; position: relative; }
+.tab svg.i { width: 22px; height: 22px; }
+.tab[aria-selected="true"] { color: var(--fg); }
+.tab[aria-selected="true"]::before { content: ""; position: absolute; top: 0; left: 30%; right: 30%; height: 2px; border-radius: 0 0 2px 2px; background: var(--signal); }
+
+.toast { position: fixed; left: 50%; bottom: calc(var(--tabbar) + 16px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 8px); opacity: 0; pointer-events: none; z-index: 7; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 500; padding: 10px 16px; border-radius: 999px; transition: opacity .2s, transform .2s; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
-<div class="app">
-  <header>
-    <div class="brand">Verity <span>Wall Pitch</span></div>
-    <p class="eyebrow">Prototype</p>
-  </header>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-photo" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M8.5 6l1.5-2.5h4L15.5 6"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-contact" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M3.5 4v16"/><path d="M10.5 18.5h3"/></symbol>
+  <symbol id="i-sight" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M6 3.5h12v17l-6-4-6 4z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v9A1.5 1.5 0 0 0 5 15.5h3.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2v.3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+</svg>
 
-  <section class="readout" aria-live="polite">
-    <div class="big" id="bigValue">—</div>
-    <div class="sub" id="subValue">Pick a method below.</div>
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><b>VERITY</b><span>Wall Pitch</span></div>
+    <span class="badge">Beta</span>
+  </div>
+</header>
+
+<main class="app">
+  <!-- RESULT -->
+  <section class="card result" aria-live="polite">
+    <div>
+      <p class="eyebrow">Wall angle</p>
+      <div class="val empty" id="val">—</div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <svg class="profile" id="profile" viewBox="0 0 116 116" role="img" aria-label="Side view of the wall"></svg>
+    <div class="meta" id="meta">Measure with a photo, the phone against the wall, or the camera.</div>
+    <div class="result-actions" id="resultActions">
+      <button class="btn grow" id="saveOpen" disabled><svg class="i"><use href="#i-save"/></svg>Save reading</button>
+    </div>
+    <form class="save-form" id="saveForm" hidden>
+      <input id="labelInput" type="text" placeholder="Name it, e.g. Cave, panel 3" autocomplete="off" aria-label="Reading name">
+      <button class="btn primary" type="submit">Save</button>
+      <button class="btn ghost" type="button" id="saveCancel" aria-label="Cancel"><svg class="i"><use href="#i-x"/></svg></button>
+    </form>
   </section>
-  <svg class="gauge" id="gauge" viewBox="0 0 320 120" role="img" aria-label="Wall profile sketch"></svg>
 
-  <nav class="tabs" role="tablist">
-    <button role="tab" id="tab-photo" aria-selected="true" data-mode="photo">Photo</button>
-    <button role="tab" id="tab-contact" aria-selected="false" data-mode="contact">Contact</button>
-    <button role="tab" id="tab-sight" aria-selected="false" data-mode="sight">Live sight</button>
-  </nav>
-
-  <!-- PHOTO MODE -->
+  <!-- PHOTO -->
   <section class="panel" id="panel-photo">
-    <ol class="steps">
-      <li>Stand <b>off to the side</b> so you see the wall's profile edge-on, phone held level.</li>
-      <li>Drag the <b style="color:var(--signal)">yellow</b> line along the wall: <b>B</b> at the base, <b>T</b> at the top.</li>
-      <li>Drag the <b style="color:var(--ref)">blue</b> line onto something truly vertical or level in the photo.</li>
-    </ol>
-    <div class="row">
-      <label class="btn solid" for="photoInput">Take or choose photo</label>
+    <div class="panel-head">
+      <h2>Measure from a photo</h2>
+      <label class="btn small" for="photoInput"><svg class="i"><use href="#i-photo"/></svg>New photo</label>
       <input id="photoInput" type="file" accept="image/*" capture="environment" hidden>
     </div>
+    <p class="hint">Drag <b>B</b> and <b>T</b> to the base and top of the wall <span class="sw" style="background:var(--signal)"></span>. Drag the blue line <span class="sw" style="background:var(--ref)"></span> onto something truly vertical or level.</p>
     <div class="stage" id="photoStage">
       <canvas id="photoCanvas" aria-label="Photo with measurement lines"></canvas>
-      <span class="tag" id="photoTag">Example photo</span>
+      <span class="stage-tag" id="photoTag">Example</span>
     </div>
-    <div class="row">
+    <div class="controls">
       <div class="field">
         <span class="eyebrow">Blue line is</span>
         <div class="seg" id="refSeg">
-          <button aria-pressed="true" data-ref="vertical">Vertical</button>
-          <button aria-pressed="false" data-ref="horizontal">Level</button>
-          <button aria-pressed="false" data-ref="gravity" id="refGravityBtn" disabled>Phone sensor</button>
+          <button type="button" aria-pressed="true" data-ref="vertical">Vertical</button>
+          <button type="button" aria-pressed="false" data-ref="horizontal">Level</button>
+          <button type="button" aria-pressed="false" data-ref="gravity" id="refGravityBtn" disabled>Sensor</button>
         </div>
       </div>
       <div class="field">
-        <span class="eyebrow">Climber stands</span>
+        <span class="eyebrow">Climber stands on the</span>
         <div class="seg" id="sideSeg">
-          <button aria-pressed="true" data-side="left">Left</button>
-          <button aria-pressed="false" data-side="right">Right</button>
+          <button type="button" aria-pressed="true" data-side="left">Left</button>
+          <button type="button" aria-pressed="false" data-side="right">Right</button>
         </div>
       </div>
     </div>
-    <p class="note">Good vertical references: a hanging rope or plumb line, a door frame, a gym's support post. Good level ones: a calm horizon, a level floor edge. Avoid tree trunks and rock edges. Photos taken in <b>Live sight</b> carry the phone's own gravity reading, so no reference is needed.</p>
+    <details class="tips">
+      <summary><svg class="i"><use href="#i-chev"/></svg>Tips for an accurate photo</summary>
+      <ul>
+        <li><b>Shoot side-on.</b> Stand level with the wall's edge so you see its profile, and hold the phone upright.</li>
+        <li><b>Vertical references:</b> a hanging rope, a plumb line, a door frame, a gym support post.</li>
+        <li><b>Level references:</b> a calm horizon or a level floor edge. Avoid tree trunks and rock edges.</li>
+        <li><b>No reference?</b> Use Live sight. Its photos carry the phone's own gravity reading.</li>
+      </ul>
+    </details>
   </section>
 
-  <!-- CONTACT MODE -->
+  <!-- CONTACT -->
   <section class="panel" id="panel-contact" hidden>
-    <ol class="steps">
-      <li>Press the <b>back of the phone</b> flat against the wall, screen facing you. Any rotation is fine.</li>
-      <li>On rock or a wall with holds, lay a <b>board or straightedge</b> across the face and press the phone to that.</li>
-      <li>Hold still until the reading turns green, then save it.</li>
-    </ol>
-    <div class="alert" id="contactBlocked" hidden></div>
-    <div class="row">
-      <button class="btn solid" id="contactStart">Start sensor</button>
-      <span class="sub" id="contactState"></span>
+    <div class="panel-head"><h2>Measure by contact</h2></div>
+    <div class="card empty-state" id="contactEmpty">
+      <svg class="art" viewBox="0 0 120 90" aria-hidden="true">
+        <path d="M40 84 L64 8" stroke="var(--muted)" stroke-width="3" stroke-linecap="round"/>
+        <rect x="47" y="26" width="16" height="34" rx="3" transform="rotate(17.5 55 43)" fill="var(--surface-2)" stroke="var(--fg)" stroke-width="2"/>
+        <path d="M20 84 H100" stroke="var(--line)" stroke-width="2"/>
+      </svg>
+      <p>Press the back of the phone flat against the wall, screen facing you. Any rotation works.</p>
+      <div class="notice" id="contactBlocked" hidden><svg class="i"><use href="#i-alert"/></svg><span></span></div>
+      <button class="btn primary" id="contactStart">Start sensor</button>
     </div>
+    <div class="card steady" id="contactLive" hidden>
+      <div class="steady-row"><span id="steadyText">Hold still…</span><button class="btn small" id="lockBtn"><svg class="i"><use href="#i-lock"/></svg><span>Lock</span></button></div>
+      <div class="meter" id="meter"><i></i></div>
+    </div>
+    <details class="tips">
+      <summary><svg class="i"><use href="#i-chev"/></svg>Tips for contact readings</summary>
+      <ul>
+        <li><b>Holds in the way?</b> Lay a board or straightedge across the face and press the phone to that.</li>
+        <li><b>Lock</b> freezes the reading so you can step back and read it.</li>
+        <li><b>Check it first:</b> on a door or wall you know is vertical it should read close to 0°.</li>
+      </ul>
+    </details>
   </section>
 
-  <!-- LIVE SIGHT MODE -->
+  <!-- LIVE SIGHT -->
   <section class="panel" id="panel-sight" hidden>
-    <ol class="steps">
-      <li>Stand <b>side-on</b> to the wall and frame its profile. Keep the phone upright, not tipped up or down.</li>
-      <li>The <b style="color:var(--ref)">blue</b> line shows true vertical from the phone's sensor.</li>
-      <li>Tap <b>Capture</b>, then drag the yellow line along the wall in the still photo.</li>
-    </ol>
-    <div class="alert" id="sightBlocked" hidden></div>
-    <div class="row">
-      <button class="btn solid" id="sightStart">Start camera</button>
-      <button class="btn" id="sightCapture" disabled>Capture</button>
-      <span class="sub" id="sightState"></span>
+    <div class="panel-head"><h2>Measure with the camera</h2></div>
+    <div class="card empty-state" id="sightEmpty">
+      <svg class="art" viewBox="0 0 120 90" aria-hidden="true">
+        <path d="M50 84 L76 10" stroke="var(--signal)" stroke-width="3" stroke-linecap="round"/>
+        <path d="M60 4 V86" stroke="var(--ref)" stroke-width="2" stroke-dasharray="5 4"/>
+        <path d="M20 84 H100" stroke="var(--line)" stroke-width="2"/>
+      </svg>
+      <p>Stand side-on to the wall. The blue line shows true vertical. Capture a frame, then trace the wall.</p>
+      <div class="notice" id="sightBlocked" hidden><svg class="i"><use href="#i-alert"/></svg><span></span></div>
+      <button class="btn primary" id="sightStart">Start camera</button>
     </div>
     <div class="stage" id="sightStage" hidden>
       <video id="video" playsinline muted></video>
       <canvas class="overlay" id="sightOverlay"></canvas>
+      <span class="tilt-chip" id="tiltChip">Level the phone</span>
+      <button class="shutter" id="sightCapture" aria-label="Capture"></button>
     </div>
   </section>
 
+  <!-- READINGS -->
   <section class="panel">
-    <div class="row">
-      <div class="field" style="flex:1 1 220px">
-        <label class="eyebrow" for="labelInput">Label</label>
-        <input id="labelInput" type="text" placeholder="e.g. Comp wall, panel 3">
-      </div>
-      <button class="btn" id="saveBtn" style="align-self:flex-end">Save reading</button>
+    <div class="readings-head">
+      <h2>Saved readings</h2>
+      <button class="btn small ghost" id="copyBtn"><svg class="i"><use href="#i-copy"/></svg>Copy</button>
     </div>
-    <div class="row" style="justify-content:space-between">
-      <p class="eyebrow">Saved on this phone</p>
-      <button class="btn" id="copyBtn" style="min-height:36px;padding:8px 12px">Copy all</button>
-    </div>
-    <div class="log" id="log"></div>
+    <div class="card list" id="list"></div>
   </section>
-</div>
+</main>
+
+<nav class="tabbar" role="tablist" aria-label="Measuring method">
+  <div class="tabbar-in">
+    <button class="tab" role="tab" aria-selected="true" data-mode="photo"><svg class="i"><use href="#i-photo"/></svg>Photo</button>
+    <button class="tab" role="tab" aria-selected="false" data-mode="contact"><svg class="i"><use href="#i-contact"/></svg>Contact</button>
+    <button class="tab" role="tab" aria-selected="false" data-mode="sight"><svg class="i"><use href="#i-sight"/></svg>Live sight</button>
+  </div>
+</nav>
+<div class="toast" id="toast" role="status"></div>
 
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
   const DEG = 180 / Math.PI;
-  const state = { mode: 'photo', value: null, method: '', ref: 'vertical', side: 'left' };
+  const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const state = { mode: 'photo', value: null, method: '', ref: 'vertical', side: 'left', locked: false };
 
-  // ---------- shared math ----------
+  // ---------- math ----------
   // Climbing convention: degrees past vertical. +overhang, -slab, 90 = roof.
   function describe(p) {
-    if (p == null || !isFinite(p)) return ['—', ''];
+    if (p == null || !isFinite(p)) return { num: '—', word: '', cls: '' };
     const a = Math.abs(p);
-    if (a < 0.5) return ['0°', 'Vertical'];
-    if (p > 0) return [a.toFixed(1) + '°', a >= 85 ? 'Roof / overhang' : 'Overhang'];
-    return [a.toFixed(1) + '°', 'Slab'];
+    if (a < 0.5) return { num: '0°', word: 'Vertical', cls: 'vert' };
+    if (p > 0) return { num: a.toFixed(1) + '°', word: a >= 85 ? 'Roof' : 'Overhang', cls: 'over' };
+    return { num: a.toFixed(1) + '°', word: 'Slab', cls: 'slab' };
   }
-  // Signed angle from vector u to vector w (y-up coords), CCW positive, degrees.
+  // Signed angle from u to w (y-up coords), CCW positive, degrees.
   const signedAngle = (u, w) => Math.atan2(u.x * w.y - u.y * w.x, u.x * w.x + u.y * w.y) * DEG;
-
   // Gravity "up" in the device frame from DeviceOrientation (W3C Z-X'-Y'' angles).
   function upFromOrientation(beta, gamma) {
     const b = beta / DEG, g = gamma / DEG;
@@ -212,59 +333,80 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
     return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
   }
 
-  function show(p, method, extra) {
+  // ---------- result card ----------
+  const METHOD = { photo: 'Photo', contact: 'Contact', sight: 'Live sight' };
+  function show(p, method, meta, quality) {
     state.value = p; state.method = method;
-    const [v, word] = describe(p);
-    $('bigValue').innerHTML = p == null ? '—' : v + '<small>' + word + '</small>';
-    $('subValue').textContent = p == null ? (extra || 'Pick a method below.')
-      : 'Past vertical, by ' + method + (extra ? ' · ' + extra : '');
-    drawGauge(p);
+    const d = describe(p);
+    $('val').textContent = d.num;
+    $('val').classList.toggle('empty', p == null);
+    let chips = '';
+    if (d.word) chips += `<span class="chip ${d.cls}"><span class="dot"></span>${d.word}</span>`;
+    if (method && p != null) chips += `<span class="chip">${METHOD[method]}</span>`;
+    if (quality) chips += `<span class="chip ${quality.cls}">${quality.text}</span>`;
+    $('chips').innerHTML = chips;
+    if (meta != null) $('meta').textContent = meta;
+    $('saveOpen').disabled = p == null;
+    drawProfile(p);
+  }
+  function drawProfile(p) {
+    const fg = tok('--fg'), mu = tok('--faint'), sig = tok('--signal'), ln = tok('--line'), s2 = tok('--surface-2');
+    const left = state.side === 'left' || state.mode !== 'photo';
+    const bx = 70, by = 100, L = 78, dir = left ? 1 : -1;
+    const ang = (p == null ? 0 : Math.max(-75, Math.min(95, p))) / DEG;
+    const tx = bx - dir * Math.sin(ang) * L, ty = by - Math.cos(ang) * L;
+    const back = bx + dir * 60;
+    let s = `<rect x="0" y="0" width="116" height="116" rx="12" fill="${s2}"/>`;
+    s += `<polygon points="${bx},${by} ${tx},${ty} ${back},${ty} ${back},${by}" fill="${ln}"/>`;
+    s += `<line x1="${bx}" y1="${by}" x2="${bx}" y2="${by - L}" stroke="${mu}" stroke-dasharray="3 3"/>`;
+    if (p != null && Math.abs(p) >= 0.5) {
+      const r = 26, a0 = -Math.PI / 2, a1 = a0 - dir * ang;
+      const x0 = bx + r * Math.cos(a0), y0 = by + r * Math.sin(a0), x1 = bx + r * Math.cos(a1), y1 = by + r * Math.sin(a1);
+      const sweep = (dir * ang > 0) ? 0 : 1;
+      s += `<path d="M${x0},${y0} A${r},${r} 0 ${Math.abs(ang) > Math.PI ? 1 : 0} ${sweep} ${x1},${y1}" fill="none" stroke="${sig}" stroke-width="1.5"/>`;
+    }
+    s += `<line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="${p == null ? mu : sig}" stroke-width="3.5" stroke-linecap="round"/>`;
+    s += `<line x1="8" y1="${by}" x2="108" y2="${by}" stroke="${mu}" stroke-width="1.5"/>`;
+    const cx = left ? 22 : 94;
+    s += `<circle cx="${cx}" cy="${by - 22}" r="4" fill="${fg}"/><path d="M${cx} ${by - 18} V${by - 8} M${cx - 5} ${by} L${cx} ${by - 8} L${cx + 5} ${by}" stroke="${fg}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+    $('profile').innerHTML = s;
   }
 
-  function drawGauge(p) {
-    const svg = $('gauge');
-    const css = getComputedStyle(document.documentElement);
-    const fg = css.getPropertyValue('--fg').trim(), mu = css.getPropertyValue('--muted').trim(),
-          sig = css.getPropertyValue('--signal').trim(), ln = css.getPropertyValue('--line').trim();
-    const bx = 150, by = 112, L = 96;
-    const ang = (p == null ? 0 : Math.max(-80, Math.min(95, p))) / DEG;
-    // climber on the left: overhang leans the top to the left
-    const tx = bx - Math.sin(ang) * L, ty = by - Math.cos(ang) * L;
-    let s = `<line x1="20" y1="${by}" x2="300" y2="${by}" stroke="${ln}" stroke-width="2"/>`;
-    s += `<line x1="${bx}" y1="${by}" x2="${bx}" y2="${by - L - 4}" stroke="${mu}" stroke-dasharray="3 4" stroke-width="1"/>`;
-    s += `<polygon points="${bx},${by} ${tx},${ty} ${tx + 70},${ty} ${bx + 70},${by}" fill="${ln}" opacity=".7"/>`;
-    s += `<line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="${p == null ? mu : sig}" stroke-width="4" stroke-linecap="round"/>`;
-    s += `<circle cx="58" cy="${by - 16}" r="5" fill="${fg}"/><line x1="58" y1="${by - 11}" x2="58" y2="${by - 2}" stroke="${fg}" stroke-width="2"/>`;
-    s += `<text x="20" y="16" fill="${mu}" font-family="Inter, sans-serif" font-size="10" letter-spacing="1.5">CLIMBER SIDE</text>`;
-    svg.innerHTML = s;
+  let toastT;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1600);
   }
 
   // ---------- tabs ----------
-  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   function setMode(m) {
     state.mode = m;
-    document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === m));
+    document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === m));
     ['photo', 'contact', 'sight'].forEach(k => $('panel-' + k).hidden = k !== m);
+    closeSave();
     if (m === 'photo') photo.compute();
-    else if (m === 'contact') show(contact.last, 'contact', contact.running ? '' : 'Press Start sensor.');
-    else show(null, '', 'Start the camera to sight the wall.');
+    else if (m === 'contact') {
+      if (contact.running) contact.render();
+      else show(null, '', 'Press the phone against the wall, then start the sensor.');
+    } else show(null, '', sight.stream ? 'Frame the wall side-on and tap the shutter.' : 'Start the camera to sight the wall from the side.');
     try { localStorage.setItem('vp-mode', m); } catch (e) {}
   }
 
-  // ---------- orientation sensor (shared by Contact and Live sight) ----------
-  const sensor = { up: null, beta: null, gamma: null, listening: false, got: false };
+  // ---------- orientation sensor ----------
+  const sensor = { up: null, listening: false, got: false };
   async function startSensor() {
     if (sensor.listening) return sensor.got || waitForEvent();
+    if (typeof DeviceOrientationEvent === 'undefined') return false;
     try {
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
         const r = await DeviceOrientationEvent.requestPermission();
         if (r !== 'granted') return false;
       }
     } catch (e) { return false; }
-    if (typeof DeviceOrientationEvent === 'undefined') return false;
     window.addEventListener('deviceorientation', (e) => {
       if (e.beta == null || e.gamma == null) return;
-      sensor.got = true; sensor.beta = e.beta; sensor.gamma = e.gamma;
+      sensor.got = true;
       sensor.up = upFromOrientation(e.beta, e.gamma);
       contact.onSample(); sight.onSample();
     });
@@ -282,48 +424,65 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
     });
   }
   const BLOCKED = window.self !== window.top
-    ? '<b>This view can\'t read the phone\'s motion sensor or camera.</b> Inside the Claude app the page is sandboxed. Photo mode works here; Contact and Live sight need the standalone copy at boyolad.github.io/verity-tools, opened in Safari or Chrome.'
-    : '<b>No motion sensor or camera reading.</b> Allow motion and camera access when your browser asks. If you said no, reload the page and try again. Photo mode works without either.';
+    ? 'This view can\'t use the motion sensor or camera. Photo mode works here. For Contact and Live sight, open boyolad.github.io/verity-tools in Safari or Chrome.'
+    : 'No motion sensor or camera reading. Allow access when your browser asks. If you tapped Don\'t Allow, reload the page and try again.';
+  function blocked(id, extra) { const n = $(id); n.querySelector('span').textContent = BLOCKED + (extra || ''); n.hidden = false; }
 
   // ---------- CONTACT ----------
   const contact = {
-    running: false, buf: [], last: null,
+    running: false, buf: [], mean: null, steady: 0,
     async start() {
-      $('contactState').textContent = 'Starting…';
+      $('contactStart').disabled = true; $('contactStart').textContent = 'Starting…';
       const ok = await startSensor();
-      if (!ok) { $('contactBlocked').innerHTML = BLOCKED; $('contactBlocked').hidden = false; $('contactState').textContent = ''; return; }
-      this.running = true; $('contactStart').disabled = true; $('contactState').textContent = '';
+      $('contactStart').disabled = false; $('contactStart').textContent = 'Start sensor';
+      if (!ok) return blocked('contactBlocked');
+      this.running = true;
+      $('contactEmpty').hidden = true; $('contactLive').hidden = false;
     },
     onSample() {
-      if (!this.running || state.mode !== 'contact') return;
-      const u = sensor.up;
-      // Screen normal elevation: + means the screen faces up (slab). Pitch past vertical = -elevation.
-      const p = -Math.asin(Math.max(-1, Math.min(1, u.z))) * DEG;
+      if (!this.running || state.locked) return;
+      const p = -Math.asin(Math.max(-1, Math.min(1, sensor.up.z))) * DEG;
       this.buf.push(p); if (this.buf.length > 30) this.buf.shift();
-      const mean = this.buf.reduce((a, b) => a + b, 0) / this.buf.length;
-      const sd = Math.sqrt(this.buf.reduce((a, b) => a + (b - mean) ** 2, 0) / this.buf.length);
-      this.last = mean;
-      const steady = this.buf.length >= 15 && sd < 0.15;
-      show(mean, 'contact', steady ? 'steady' : 'hold still');
-      $('subValue').className = 'sub ' + (steady ? 'stable' : 'unstable');
+      this.mean = this.buf.reduce((a, b) => a + b, 0) / this.buf.length;
+      const sd = Math.sqrt(this.buf.reduce((a, b) => a + (b - this.mean) ** 2, 0) / this.buf.length);
+      // 0..1: how settled the reading is (full when 15+ samples within ±0.15°)
+      this.steady = Math.min(1, this.buf.length / 15) * Math.max(0, Math.min(1, (1.0 - sd) / 0.85));
+      if (state.mode === 'contact') this.render();
+    },
+    render() {
+      const ok = this.steady >= 0.98;
+      const q = state.locked ? { cls: 'ok', text: 'Locked' } : ok ? { cls: 'ok', text: 'Steady' } : { cls: 'warn', text: 'Hold still' };
+      show(this.mean, 'contact', state.locked ? 'Reading locked. Tap Unlock to measure again.' : 'Keep the phone flat on the wall.', q);
+      $('meter').querySelector('i').style.width = (state.locked ? 100 : this.steady * 100) + '%';
+      $('meter').classList.toggle('ok', ok || state.locked);
+      $('steadyText').textContent = state.locked ? 'Locked' : ok ? 'Steady. Lock or save it.' : 'Hold still…';
     }
   };
   $('contactStart').addEventListener('click', () => contact.start());
+  $('lockBtn').addEventListener('click', () => {
+    state.locked = !state.locked;
+    $('lockBtn').querySelector('span').textContent = state.locked ? 'Unlock' : 'Lock';
+    if (!state.locked) contact.buf = [];
+    contact.render();
+  });
 
   // ---------- canvas helpers ----------
   function drawHandle(ctx, x, y, color, label, active) {
-    ctx.beginPath(); ctx.arc(x, y, active ? 15 : 12, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, active ? 16 : 13, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,.42)'; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = color; ctx.stroke();
     ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
-    if (label) { ctx.font = '600 12px Inter, sans-serif'; ctx.fillStyle = color; ctx.fillText(label, x + 17, y - 12); }
+    if (label) {
+      ctx.font = '600 11px Inter, sans-serif';
+      const w = ctx.measureText(label).width + 10;
+      ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x + 16, y - 26, w, 18, 9) : ctx.rect(x + 16, y - 26, w, 18); ctx.fill();
+      ctx.fillStyle = '#141414'; ctx.fillText(label, x + 21, y - 13);
+    }
   }
-  const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
   // ---------- PHOTO ----------
   const photo = {
-    img: null, w: 0, h: 0, scale: 1,
-    pts: null, gravityUp: null, drag: null,
+    img: null, w: 0, h: 0, scale: 1, pts: null, gravityUp: null, drag: null,
     canvas: $('photoCanvas'),
     load(img, opts = {}) {
       this.img = img; this.w = img.width; this.h = img.height;
@@ -334,23 +493,22 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
       };
       this.gravityUp = opts.gravityUp || null;
       $('refGravityBtn').disabled = !this.gravityUp;
-      setRef(this.gravityUp ? 'gravity' : (state.ref === 'gravity' ? 'vertical' : state.ref));
+      setRef(this.gravityUp ? 'gravity' : (state.ref === 'gravity' ? 'vertical' : state.ref), true);
       $('photoTag').hidden = !opts.example;
       this.layout();
     },
     layout() {
       if (!this.img) return;
       const cssW = this.canvas.parentElement.clientWidth;
-      const maxH = Math.max(320, window.innerHeight * 0.68);
+      const maxH = Math.max(320, window.innerHeight * 0.62);
       this.scale = Math.min(cssW / this.w, maxH / this.h);
-      const cw = this.w * this.scale, ch = this.h * this.scale;
-      const dpr = window.devicePixelRatio || 1;
-      this.canvas.style.width = cw + 'px'; this.canvas.style.height = ch + 'px';
-      this.canvas.style.margin = '0 auto';
+      const cw = this.w * this.scale, ch = this.h * this.scale, dpr = window.devicePixelRatio || 1;
+      Object.assign(this.canvas.style, { width: cw + 'px', height: ch + 'px', margin: '0 auto' });
       this.canvas.width = Math.round(cw * dpr); this.canvas.height = Math.round(ch * dpr);
       this.draw();
     },
     draw() {
+      if (!this.img) return;
       const c = this.canvas, ctx = c.getContext('2d'), dpr = window.devicePixelRatio || 1, s = this.scale;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, c.width, c.height);
@@ -375,21 +533,20 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
     },
     loupe(ctx) {
       // magnified view of the dragged point, in the corner away from the finger
-      const p = this.pts[this.drag], s = this.scale, R = 56, Z = 3;
-      const cw = this.w * s;
-      const cx = p.x * s < cw / 2 ? cw - R - 10 : R + 10, cy = R + 10;
+      const p = this.pts[this.drag], s = this.scale, R = 54, Z = 3, cw = this.w * s;
+      const cx = p.x * s < cw / 2 ? cw - R - 12 : R + 12, cy = R + 12;
       ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
       const srcR = R / (s * Z);
       ctx.drawImage(this.img, p.x - srcR, p.y - srcR, srcR * 2, srcR * 2, cx - R, cy - R, R * 2, R * 2);
       ctx.restore();
-      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.lineWidth = 2; ctx.strokeStyle = tok('--fg'); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy); ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
-      ctx.strokeStyle = this.drag[0] === 'r' ? tok('--ref') : tok('--signal'); ctx.stroke();
+      ctx.lineWidth = 2; ctx.strokeStyle = this.drag[0] === 'r' ? tok('--ref') : tok('--signal'); ctx.stroke();
     },
     compute() {
       if (!this.pts || state.mode !== 'photo') return;
       const { b, t, r1, r2 } = this.pts;
-      const w = { x: t.x - b.x, y: -(t.y - b.y) };   // y-up
+      const w = { x: t.x - b.x, y: -(t.y - b.y) };
       let up;
       if (state.ref === 'gravity') up = this.gravityUp;
       else {
@@ -397,11 +554,11 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
         up = state.ref === 'vertical' ? r : { x: -r.y, y: r.x };
         if (up.y < 0) up = { x: -up.x, y: -up.y };
       }
-      if (!up || (Math.hypot(w.x, w.y) < 5)) return show(null, '', 'Drag the lines into place.');
-      const lean = signedAngle(up, w); // + = top leans left
+      if (!up || Math.hypot(w.x, w.y) < 5) return show(null, '', 'Drag the lines into place.');
+      const lean = signedAngle(up, w);
       const p = state.side === 'left' ? lean : -lean;
-      const refName = { vertical: 'vertical reference', horizontal: 'level reference', gravity: 'phone sensor' }[state.ref];
-      show(p, 'photo', refName);
+      const refName = { vertical: 'a vertical reference', horizontal: 'a level reference', gravity: 'the phone\'s gravity sensor' }[state.ref];
+      show(p, 'photo', (this.example ? 'Example photo, ' : '') + 'measured against ' + refName + '.');
     },
     pointer(e) {
       const r = this.canvas.getBoundingClientRect();
@@ -410,7 +567,7 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
   };
   const pc = photo.canvas;
   pc.addEventListener('pointerdown', (e) => {
-    const p = photo.pointer(e), hit = 30 / photo.scale;
+    const p = photo.pointer(e), hit = 32 / photo.scale;
     let best = null, bd = Infinity;
     const keys = state.ref === 'gravity' ? ['b', 't'] : ['b', 't', 'r1', 'r2'];
     for (const k of keys) { const d = Math.hypot(photo.pts[k].x - p.x, photo.pts[k].y - p.y); if (d < bd) { bd = d; best = k; } }
@@ -429,15 +586,16 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
 
   $('photoInput').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    const url = URL.createObjectURL(f), img = new Image();
-    img.onload = () => { photo.load(img); photo.compute(); };
-    img.src = url;
+    const img = new Image();
+    img.onload = () => { photo.example = false; photo.load(img); photo.compute(); };
+    img.src = URL.createObjectURL(f);
+    e.target.value = '';
   });
 
-  function setRef(r) {
+  function setRef(r, silent) {
     state.ref = r;
     document.querySelectorAll('#refSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.ref === r));
-    if (photo.img) { photo.draw(); photo.compute(); }
+    if (!silent && photo.img) { photo.draw(); photo.compute(); }
   }
   document.querySelectorAll('#refSeg button').forEach(b => b.addEventListener('click', () => setRef(b.dataset.ref)));
   document.querySelectorAll('#sideSeg button').forEach(b => b.addEventListener('click', () => {
@@ -449,29 +607,33 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
 
   // Example: a side view of a 30° overhang with a hanging rope as the plumb line.
   function examplePhoto() {
-    const W = 900, H = 1200, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const W = 900, H = 1100, c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d');
-    const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#3a3f45'); sky.addColorStop(1, '#23262a');
-    g.fillStyle = sky; g.fillRect(0, 0, W, H);
-    g.fillStyle = '#2d2a27'; g.fillRect(0, 1040, W, 160);           // floor / mats
-    g.fillStyle = '#3b3733'; g.fillRect(0, 1040, W, 14);
-    const a = 30 / DEG, bx = 470, by = 1040, L = 820;
+    const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#41464c'); bg.addColorStop(1, '#25282c');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#2b2825'; g.fillRect(0, 960, W, 140);
+    g.fillStyle = '#3a3632'; g.fillRect(0, 960, W, 12);
+    const a = 30 / DEG, bx = 500, by = 960, L = 780;
     const tx = bx - Math.sin(a) * L, ty = by - Math.cos(a) * L;
-    g.fillStyle = '#8e8a83';                                           // wall slab, face on the left
-    g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.lineTo(tx + 60, ty - 40); g.lineTo(W, ty - 40); g.lineTo(W, by); g.closePath(); g.fill();
-    g.fillStyle = '#a7a39b'; g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.lineTo(tx + 26, ty); g.lineTo(bx + 26, by); g.closePath(); g.fill();
+    g.fillStyle = '#7f7b74';
+    g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.lineTo(W, ty); g.lineTo(W, by); g.closePath(); g.fill();
+    g.fillStyle = '#a19d95'; g.beginPath(); g.moveTo(bx, by); g.lineTo(tx, ty); g.lineTo(tx + 24, ty); g.lineTo(bx + 24, by); g.closePath(); g.fill();
     const holds = ['#e8c13a', '#3aa0e8', '#e85a3a', '#5ac46a', '#e8c13a'];
-    for (let i = 0; i < 5; i++) {                                      // holds on the face
+    for (let i = 0; i < 5; i++) {
       const f = 0.12 + i * 0.18, hx = bx + (tx - bx) * f, hy = by + (ty - by) * f;
-      g.fillStyle = holds[i]; g.beginPath(); g.ellipse(hx - 14, hy, 22, 14, -a, 0, Math.PI * 2); g.fill();
+      g.fillStyle = holds[i]; g.beginPath(); g.ellipse(hx - 12, hy, 20, 12, -a, 0, Math.PI * 2); g.fill();
     }
-    g.strokeStyle = '#d9d4c7'; g.lineWidth = 6;                       // hanging rope
-    g.beginPath(); g.moveTo(170, 60); g.lineTo(170, 1000); g.stroke();
-    g.fillStyle = '#d9d4c7'; g.beginPath(); g.arc(170, 1006, 14, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#d9d4c7'; g.lineWidth = 6;
+    g.beginPath(); g.moveTo(170, 40); g.lineTo(170, 900); g.stroke();
+    g.fillStyle = '#d9d4c7'; g.beginPath(); g.arc(170, 906, 13, 0, Math.PI * 2); g.fill();
     const img = new Image();
-    img.onload = () => { photo.load(img, { example: true, pts: {
-      b: { x: bx, y: by }, t: { x: bx + (tx - bx) * 0.92, y: by + (ty - by) * 0.92 },
-      r1: { x: 170, y: 940 }, r2: { x: 170, y: 120 } } }); photo.compute(); };
+    img.onload = () => {
+      photo.example = true;
+      photo.load(img, { example: true, pts: {
+        b: { x: bx, y: by }, t: { x: bx + (tx - bx) * 0.92, y: by + (ty - by) * 0.92 },
+        r1: { x: 170, y: 860 }, r2: { x: 170, y: 110 } } });
+      photo.compute();
+    };
     img.src = c.toDataURL('image/jpeg', 0.85);
   }
 
@@ -479,37 +641,35 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
   const sight = {
     stream: null, video: $('video'), ov: $('sightOverlay'),
     async start() {
-      $('sightState').textContent = 'Starting…';
+      $('sightStart').disabled = true; $('sightStart').textContent = 'Starting…';
       const okSensor = await startSensor();
       let okCam = false;
       try {
         this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 } }, audio: false });
         this.video.srcObject = this.stream; await this.video.play(); okCam = true;
       } catch (e) { okCam = false; }
-      $('sightState').textContent = '';
+      $('sightStart').disabled = false; $('sightStart').textContent = 'Start camera';
       if (!okSensor || !okCam) {
-        $('sightBlocked').innerHTML = BLOCKED + (okCam && !okSensor ? ' (Camera started, but no motion sensor reading.)' : '');
-        $('sightBlocked').hidden = false;
-        if (this.stream) this.stream.getTracks().forEach(t => t.stop());
-        return;
+        if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null; }
+        return blocked('sightBlocked', okCam && !okSensor ? ' The camera started, but the motion sensor gave no reading.' : '');
       }
-      $('sightStage').hidden = false; $('sightStart').disabled = true; $('sightCapture').disabled = false;
+      $('sightEmpty').hidden = true; $('sightStage').hidden = false;
+      show(null, '', 'Frame the wall side-on and tap the shutter.');
     },
     onSample() {
       if (!this.stream || state.mode !== 'sight') return;
-      const v = this.video, r = v.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+      const r = this.video.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
       this.ov.width = r.width * dpr; this.ov.height = r.height * dpr;
       const ctx = this.ov.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, r.width, r.height);
-      const u = toScreen(sensor.up), n = Math.hypot(u.x, u.y) || 1;
-      const cx = r.width / 2, cy = r.height / 2, L = r.height;
+      const u = toScreen(sensor.up), n = Math.hypot(u.x, u.y) || 1, cx = r.width / 2, cy = r.height / 2, L = r.height;
       ctx.strokeStyle = tok('--ref'); ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
       ctx.beginPath(); ctx.moveTo(cx - u.x / n * L, cy + u.y / n * L); ctx.lineTo(cx + u.x / n * L, cy - u.y / n * L); ctx.stroke();
-      // camera looks out the back (-z): its elevation tells whether the phone is tipped
-      const tip = Math.asin(Math.max(-1, Math.min(1, -sensor.up.z))) * DEG;
-      const okTip = Math.abs(tip) < 10;
-      $('sightState').textContent = 'Tip ' + (tip > 0 ? 'up ' : 'down ') + Math.abs(tip).toFixed(0) + '°' + (okTip ? '' : ', level the phone');
-      $('sightState').className = 'sub ' + (okTip ? 'stable' : 'unstable');
+      // the camera looks out the back (-z): its elevation shows whether the phone is tipped
+      const tip = Math.asin(Math.max(-1, Math.min(1, -sensor.up.z))) * DEG, okTip = Math.abs(tip) < 10;
+      const chip = $('tiltChip');
+      chip.textContent = okTip ? 'Level. Ready to capture' : `Tipped ${tip > 0 ? 'up' : 'down'} ${Math.abs(tip).toFixed(0)}°. Level the phone`;
+      chip.className = 'tilt-chip ' + (okTip ? 'ok' : 'warn');
     },
     capture() {
       const v = this.video, c = document.createElement('canvas');
@@ -518,9 +678,11 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
       const u = toScreen(sensor.up), n = Math.hypot(u.x, u.y) || 1;
       const img = new Image();
       img.onload = () => {
+        photo.example = false;
         setMode('photo');
         photo.load(img, { gravityUp: { x: u.x / n, y: u.y / n } });
         photo.compute();
+        toast('Captured. Drag B and T onto the wall.');
       };
       img.src = c.toDataURL('image/jpeg', 0.9);
     }
@@ -532,41 +694,55 @@ input[type="text"] { background: var(--panel); color: var(--fg); border: 1px sol
   function loadLog() { try { return JSON.parse(localStorage.getItem('vp-log') || '[]'); } catch (e) { return []; } }
   function saveLog(l) { try { localStorage.setItem('vp-log', JSON.stringify(l)); } catch (e) {} }
   let log = loadLog();
-  const example = log.length === 0;
+  const fmtTime = (t) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   function renderLog() {
-    const items = log.length ? log : [
-      { label: 'Example: 30° board', value: 30.2, method: 'contact', t: Date.now() },
-      { label: 'Example: slab boulder', value: -12.4, method: 'photo', t: Date.now() }];
-    $('log').innerHTML = '';
+    const list = $('list'); list.innerHTML = '';
+    const sample = !log.length;
+    const items = sample ? [
+      { label: 'Example: 40° board', value: 40.1, method: 'contact', t: Date.now() },
+      { label: 'Example: slab boulder', value: -12.4, method: 'photo', t: Date.now() }] : log;
     items.forEach((it, i) => {
-      const d = document.createElement('div'); d.className = 'log-item';
-      const [v, w] = describe(it.value);
+      const d = describe(it.value), row = document.createElement('div');
+      row.className = 'item' + (sample ? ' sample' : '');
       const l = document.createElement('div'); l.className = 'l'; l.textContent = it.label || 'Untitled';
-      const val = document.createElement('div'); val.className = 'v'; val.textContent = (it.value > 0.5 ? '+' : '') + v;
-      const m = document.createElement('div'); m.className = 'm';
-      m.textContent = w + ' · ' + it.method + ' · ' + new Date(it.t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) + (log.length ? '' : ' · sample row');
-      d.append(l, val, m); $('log').append(d);
+      const v = document.createElement('div'); v.className = 'v ' + d.cls; v.textContent = d.num;
+      const m = document.createElement('div'); m.className = 'm'; m.textContent = `${d.word} · ${METHOD[it.method] || it.method} · ${fmtTime(it.t)}`;
+      row.append(l, v, m);
+      if (!sample) {
+        const del = document.createElement('button'); del.className = 'icon-btn'; del.setAttribute('aria-label', 'Delete ' + (it.label || 'reading'));
+        del.innerHTML = '<svg class="i"><use href="#i-x"/></svg>';
+        del.addEventListener('click', () => { log.splice(i, 1); saveLog(log); renderLog(); toast('Reading deleted'); });
+        row.append(del);
+      }
+      list.append(row);
     });
+    if (sample) { const e = document.createElement('div'); e.className = 'list-empty'; e.textContent = 'Examples shown. Readings you save stay on this phone.'; list.append(e); }
+    $('copyBtn').disabled = sample;
   }
-  $('saveBtn').addEventListener('click', () => {
+
+  function openSave() { $('resultActions').hidden = true; $('saveForm').hidden = false; $('labelInput').focus(); }
+  function closeSave() { $('saveForm').hidden = true; $('resultActions').hidden = false; $('labelInput').value = ''; }
+  $('saveOpen').addEventListener('click', openSave);
+  $('saveCancel').addEventListener('click', closeSave);
+  $('saveForm').addEventListener('submit', (e) => {
+    e.preventDefault();
     if (state.value == null) return;
     log.unshift({ label: $('labelInput').value.trim(), value: +state.value.toFixed(1), method: state.method, t: Date.now() });
-    saveLog(log); renderLog(); $('labelInput').value = '';
-    $('saveBtn').textContent = 'Saved'; setTimeout(() => $('saveBtn').textContent = 'Save reading', 1200);
+    saveLog(log); renderLog(); closeSave(); toast('Reading saved');
   });
   $('copyBtn').addEventListener('click', async () => {
-    const txt = log.map(it => `${it.label || 'Untitled'}\t${it.value}°\t${describe(it.value)[1]}\t${it.method}\t${new Date(it.t).toISOString()}`).join('\n') || 'No saved readings yet.';
-    try { await navigator.clipboard.writeText(txt); $('copyBtn').textContent = 'Copied'; }
-    catch (e) { $('copyBtn').textContent = 'Copy failed'; }
-    setTimeout(() => $('copyBtn').textContent = 'Copy all', 1400);
+    const txt = log.map(it => `${it.label || 'Untitled'}\t${it.value}°\t${describe(it.value).word}\t${METHOD[it.method] || it.method}\t${new Date(it.t).toISOString()}`).join('\n');
+    try { await navigator.clipboard.writeText(txt); toast('Copied ' + log.length + ' reading' + (log.length === 1 ? '' : 's')); }
+    catch (e) { toast('Couldn\'t copy on this device'); }
   });
 
   // ---------- boot ----------
   renderLog();
-  drawGauge(null);
+  drawProfile(null);
   examplePhoto();
   let m = 'photo'; try { m = localStorage.getItem('vp-mode') || 'photo'; } catch (e) {}
   setMode(m);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { photo.draw(); drawProfile(state.value); });
   window.__vp = { describe, signedAngle, upFromOrientation };
 })();
 </script>
